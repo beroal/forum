@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Инструкция по эксплуатации</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Language" content="ru" />
+</head>
+
+<body>
+
+<h1>
+Инструкция по эксплуатации
+</h1>
+
+<h2>
+Общие сведения
+</h2>
+<p>
+Программа написана на языке Java. Программа управляется с помощью команд SQL и command line UI (далее CLI). Для выполнения команд SQL я использую FlameRobin. Чтобы другие узлы могли подписаться на вас, ваш компьютер должен иметь глобальный (= белый = внешний) IP-адрес. Связь между узлами по TLS, для аутентификации узлов применяются сертификаты X.509.
+</p>
+
+<h2>
+Установка программы
+</h2>
+<ol>
+<li>
+Установить Java Development Kit (JDK).
+</li>
+<li>
+Установить СУБД FireBird.
+</li>
+<li>
+Установить драйвер JDBC для FireBird (= JayBird).
+</li>
+<li>
+Скомпилировать исходный код в директорию BIN.
+</li>
+<li>
+Создать БД FireBird. Путь к ней будем обозначать DB_FILE, имя пользователя — USER, его пароль — PASSWORD.
+</li>
+<li>
+Запустить в БД файл «create.sql».
+</li>
+<li>
+Создать свой сертификат с помощью скрипта Unix:
+<code><pre>
+gen-ssl-key.sh $CERT
+</pre></code>
+Сертификат вашего узла находится в файле «$CERT.cert».
+</li>
+</ol>
+
+<h2>
+Эксплуатация программы
+</h2>
+<p>
+Чтобы запустить программу, выполните команды Unix
+<code><pre>
+cd $BIN
+java -cp .:$JAYBIRD -Djavax.net.ssl.keyStore=$CERT.jks -Djavax.net.ssl.keyStorePassword=123456 Main $DB_FILE $USER $PASSWORD $PORT
+</pre></code>
+где JAYBIRD — путь к jar-файлу JayBird. После запуска программа слушает порт PORT и запускает CLI. CLI показывает сообщения программы и выполняет команды.
+</p>
+<p>
+Чтобы подписаться на узел сети, нужно добавить запись в таблицу «net_node». В поле «news» записать значение 0. В поле «cert» загрузить сертификат узла (советую использовать FlameRobin).
+</p>
+<p>
+Чтобы создать статью с текстом CONTENTS, выполните SQL
+<code><pre>
+insert into article (id, contents, is_read)
+values (next value for article_gen, $CONTENTS, -1);
+</pre></code>
+</p>
+<p>
+Чтобы поделиться статьёй ID с вашими подписчиками
+<ol>
+<li>
+Выполните SQL
+<code><pre>
+update article
+set news = next value for news_gen
+where id = $ID;
+</pre></code>
+</li>
+<li>
+Выполните CLI
+<code><pre>
+share
+</pre></code>
+</li>
+</ol>
+</p>
+<p>
+Если подписчик поделился статьёй с вами, CLI покажет соответствующее сообщение и издаст звуковой сигнал (с помощью ASCII beep).
+</p>
+<p>
+Чтобы увидеть непрочитанные статьи, выполните SQL
+<code><pre>
+select * from article a where is_read=0;
+</pre></code>
+</p>
+<p>
+Чтобы отметить, что статья ID прочитана, выполните SQL
+<code><pre>
+update article
+set is_read = -1
+where id = $ID;
+</pre></code>
+</p>
+
+</body>
+</html>
